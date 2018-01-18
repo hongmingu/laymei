@@ -1,5 +1,8 @@
 from django.apps import AppConfig
 
 
-class RenoauthConfig(AppConfig):
+class CustomauthConfig(AppConfig):
     name = 'renoauth'
+
+    def ready(self):
+        import renoauth.signals
