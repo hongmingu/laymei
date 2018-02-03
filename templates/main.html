@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block extra_head %}{% endblock %}
+{% block contents %}
+    {% if user.is_authenticated %}
+        <!--로그인됨-->
+        {% if user.userextension.activated %}
+            <!--로그인되고 활성화-->
+        {% else %}
+            <!--로그인되었으나 비활성화-->
+        {% endif %}
+    {% else %}
+        <!--not logged in-->
+    {% endif %}
+{% endblock %}
+{% block extra_script %}
+    {% if user.is_authenticated %}
+        <!--로그인됨-->
+        {% if user.userextension.activated %}
+            <!--로그인되고 활성화-->
+        {% else %}
+            <!--로그인되었으나 비활성화-->
+        {% endif %}
+    {% else %}
+        <!--not logged in-->
+    {% endif %}
+{% endblock %}

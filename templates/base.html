@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+
+    <title>{% block title %}Title{% endblock %}</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script
+    src="https://code.jquery.com/ui/1.9.2/jquery-ui.min.js"
+    integrity="sha256-eEa1kEtgK9ZL6h60VXwDsJ2rxYCwfxi40VZ9E0XwoEA="
+    crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    {% load static from staticfiles %}
+    <script src="{% static 'js/jQuery_csrf.js' %}"></script>
+    <!--<link rel="stylesheet" type="text/css" href="{% static "base_modified.css" %}">-->
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% block contents %}
+<!--모두 ajax 처리하되 글쓰기는 ajax 링크가 아니더라도 바로 로그인으로 이어지게-->
+{% endblock %}
+</body>
+{% block extra_script %}
+{% endblock %}
+</html>
