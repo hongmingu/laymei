@@ -168,246 +168,498 @@ user.save()
 '''
 
 
-def create(request):
+def main_create_log_in(request):
     if request.method == 'POST':
+        if request.POST['type'] == 'create':
 
-        form = UserCreateForm(request.POST)
+            form = UserCreateForm(request.POST)
 
-        username = form.data['username']
-        email = form.data['email']
-        password = form.data['password']
-        password_confirm = form.data['password_confirm']
-        data = {
-            'username': username,
-            'email': email,
-        }
+            password = None
+            name = form.data['name']
+            username = form.data['username']
+            email = form.data['email']
+            data = {
+                'name': name,
+                'username': username,
+                'email': email,
+            }
 
-        # recaptcha part begin
+            # if password or recaptcha is None
+            if password is None:
 
-        recaptcha_response = request.POST.get('g-recaptcha-response')
-        url = 'https://www.google.com/recaptcha/api/siteverify'
-        values = {
-            'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
-            'response': recaptcha_response
-        }
-        recaptcha_data = urllib.parse.urlencode(values).encode()
-        recaptcha_req = urllib.request.Request(url, data=recaptcha_data)
-        recaptcha_response = urllib.request.urlopen(recaptcha_req)
-        recaptcha_result = json.loads(recaptcha_response.read().decode())
+                # banned username and password
+                match_ban = [nm for nm in banned.BANNED_USERNAME_LIST if nm in username]
+                if match_ban:
+                    clue = {'message': texts.USERNAME_BANNED}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
 
-        if not recaptcha_result['success']:
-            clue = {'message': texts.RECAPTCHA_CONFIRM_NEED}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
+                match_username = re.match('^([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\.(?!\.))){0,28}(?:[A-Za-z0-9_]))?)$',
+                                          username)
+                match_email = re.match('[^@]+@[^@]+\.[^@]+', email)
 
-        # banned username and password
-
-        match_ban = [nm for nm in banned.BANNED_USERNAME_LIST if nm in username]
-        if match_ban:
-            clue = {'message': texts.USERNAME_BANNED}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-
-        if password in banned.BANNED_PASSWORD_LIST:
-            clue = {'message': texts.PASSWORD_BANNED}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-
-        match_username = re.match('^([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\.(?!\.))){0,28}(?:[A-Za-z0-9_]))?)$', username)
-        match_email = re.match('[^@]+@[^@]+\.[^@]+', email)
-
-        # Integrity UserSubEmail and UserSubUsername
-        user_sub_email = None
-        try:
-            user_sub_email = UserSubEmail.objects.get(Q(email=email), Q(primary=True) | Q(verified=True))
-        except UserSubEmail.DoesNotExist:
-            pass
-
-        # set user_delete_timer None
-        user_delete_timer = None
-
-        if user_sub_email is not None:
-            user_extension = user_sub_email.user_extension
-            try:
-                user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
-            except UserDeleteTimer.DoesNotExist:
-                pass
-
-        if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
-            # user_delete_timer is over 30days
-            user_delete_timer.user_extension.user.delete()
-            user_sub_email = None
-
-        if user_sub_email is not None:
-            clue = {'message': texts.EMAIL_ALREADY_USED}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-
-        user_sub_username = None
-        try:
-            user_sub_username = UserSubUsername.objects.get(username=username)
-        except UserSubUsername.DoesNotExist:
-            pass
-
-        # set user_delete_timer None
-        user_delete_timer = None
-
-        if user_sub_username is not None:
-            user_extension = user_sub_username.user_extension
-            try:
-                user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
-            except UserDeleteTimer.DoesNotExist:
-                pass
-
-        if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
-            user_delete_timer.user_extension.user.delete()
-            user_sub_username = None
-
-        if user_sub_username is not None:
-            clue = {'message': texts.USERNAME_ALREADY_USED}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        # regex check
-
-        # In username, more 5 characters and only digits prevent
-        if not match_username:
-            clue = {'message': texts.USERNAME_UNAVAILABLE}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if len(username) > 5 and username.isdigit():
-            clue = {'message': texts.USERNAME_OVER_5_CANNOT_DIGITS}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if len(username) > 30:
-            clue = {'message': texts.USERNAME_LENGTH_OVER_30}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if not match_email:
-            clue = {'message': texts.EMAIL_UNAVAILABLE}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if len(email) > 255:
-            clue = {'message': texts.EMAIL_LENGTH_OVER_255}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if not password == password_confirm:
-            clue = {'message': texts.PASSWORD_NOT_THE_SAME}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if len(password) > 128 or len(password) < 6:
-            clue = {'message': texts.PASSWORD_LENGTH_PROBLEM}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-        if username == password:
-            clue = {'message': texts.PASSWORD_EQUAL_USERNAME}
-            form = UserCreateForm(data)
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
-
-        # Then, go to is_valid below
-        if form.is_valid():
-            check_username_result = None
-            new_user_create = None
-            new_username = form.cleaned_data['username']
-            new_password = form.cleaned_data['password']
-            new_email = form.cleaned_data['email']
-            while check_username_result is None:
+                # Integrity UserSubEmail and UserSubUsername
+                user_sub_email = None
                 try:
-                    id_number = make_id()
-                    new_user_create = User.objects.create_user(
-                        username=id_number,
-                        password=new_password,
-                        is_active=True,
-                    )
-                    check_username_result = 1
+                    user_sub_email = UserSubEmail.objects.get(Q(email=email), Q(primary=True) | Q(verified=True))
+                except UserSubEmail.DoesNotExist:
+                    pass
 
-                except IntegrityError as e:
-                    if 'unique constraint' in e.message:
-                        pass
-                    else:
-                        clue = {'message': texts.CREATING_USER_EXTRA_ERROR}
-                        form = UserCreateForm(data)
-                        return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
+                # set user_delete_timer None
+                user_delete_timer = None
 
-            new_user_extension_create = None
-
-            if new_user_create is not None:
-                new_user_extension_create = UserExtension.objects.create(
-                    user=new_user_create,
-                    verified=False,
-                )
-
-            new_user_sub_email_create = None
-            new_user_sub_username = None
-
-            if new_user_extension_create is not None:
-
-                new_user_sub_email_create = UserSubEmail.objects.create(
-                    user_extension=new_user_extension_create,
-                    email=new_email,
-                    verified=False,
-                    primary=True,
-                )
-
-                if user_sub_email is not None and user_sub_email.verified is False:
-                    user_sub_email.delete()
-
-                new_user_sub_username = UserSubUsername.objects.create(
-                    user_extension=new_user_extension_create,
-                    username=new_username,
-                )
-
-            uid = None
-            token = None
-            check_token_result = None
-            if new_user_sub_email_create is not None:
-
-                while check_token_result is None:
+                if user_sub_email is not None:
+                    user_extension = user_sub_email.user_extension
                     try:
-                        uid = urlsafe_base64_encode(force_bytes(new_user_create.pk))
-                        token = account_activation_token.make_token(new_user_create)
-                        if not UserEmailAuthToken.objects.filter(uid=uid, token=token).exists():
-                            UserEmailAuthToken.objects.create(
-                                email=new_user_sub_email_create,
-                                uid=uid,
-                                token=token,
-                            )
-                        check_token_result = 1
+                        user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
+                    except UserDeleteTimer.DoesNotExist:
+                        pass
+
+                if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
+                    # user_delete_timer is over 30days
+                    user_delete_timer.user_extension.user.delete()
+                    user_sub_email = None
+
+                if user_sub_email is not None:
+                    clue = {'message': texts.EMAIL_ALREADY_USED}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+
+                user_sub_username = None
+                try:
+                    user_sub_username = UserSubUsername.objects.get(username=username)
+                except UserSubUsername.DoesNotExist:
+                    pass
+
+                # set user_delete_timer None
+                user_delete_timer = None
+
+                if user_sub_username is not None:
+                    user_extension = user_sub_username.user_extension
+                    try:
+                        user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
+                    except UserDeleteTimer.DoesNotExist:
+                        pass
+
+                if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
+                    user_delete_timer.user_extension.user.delete()
+                    user_sub_username = None
+
+                if user_sub_username is not None:
+                    clue = {'message': texts.USERNAME_ALREADY_USED}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+                # regex check
+
+                # In username, more 5 characters and only digits prevent
+                if not match_username:
+                    clue = {'message': texts.USERNAME_UNAVAILABLE}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+                if len(username) > 5 and username.isdigit():
+                    clue = {'message': texts.USERNAME_OVER_5_CANNOT_DIGITS}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+                if len(username) > 30:
+                    clue = {'message': texts.USERNAME_LENGTH_OVER_30}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+                if not match_email:
+                    clue = {'message': texts.EMAIL_UNAVAILABLE}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+                if len(email) > 255:
+                    clue = {'message': texts.EMAIL_LENGTH_OVER_255}
+                    log_in_form = LoginForm()
+                    create_form = UserCreateForm(data)
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue': clue})
+
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form})
+
+            password = form.data['password']
+            password_confirm = form.data['password_confirm']
+            # banned username and password
+            match_ban = [nm for nm in banned.BANNED_USERNAME_LIST if nm in username]
+            if match_ban:
+                clue = {'message': texts.USERNAME_BANNED}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+
+            if password in banned.BANNED_PASSWORD_LIST:
+                clue = {'message': texts.PASSWORD_BANNED}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            match_username = re.match('^([A-Za-z0-9_](?:(?:[A-Za-z0-9_]|(?:\.(?!\.))){0,28}(?:[A-Za-z0-9_]))?)$',
+                                      username)
+            match_email = re.match('[^@]+@[^@]+\.[^@]+', email)
+
+            # Integrity UserSubEmail and UserSubUsername
+            user_sub_email = None
+            try:
+                user_sub_email = UserSubEmail.objects.get(Q(email=email), Q(primary=True) | Q(verified=True))
+            except UserSubEmail.DoesNotExist:
+                pass
+
+            # set user_delete_timer None
+            user_delete_timer = None
+
+            if user_sub_email is not None:
+                user_extension = user_sub_email.user_extension
+                try:
+                    user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
+                except UserDeleteTimer.DoesNotExist:
+                    pass
+
+            if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
+                # user_delete_timer is over 30days
+                user_delete_timer.user_extension.user.delete()
+                user_sub_email = None
+
+            if user_sub_email is not None:
+                clue = {'message': texts.EMAIL_ALREADY_USED}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            user_sub_username = None
+            try:
+                user_sub_username = UserSubUsername.objects.get(username=username)
+            except UserSubUsername.DoesNotExist:
+                pass
+
+            # set user_delete_timer None
+            user_delete_timer = None
+
+            if user_sub_username is not None:
+                user_extension = user_sub_username.user_extension
+                try:
+                    user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_extension)
+                except UserDeleteTimer.DoesNotExist:
+                    pass
+
+            if user_delete_timer is not None and now() - user_delete_timer.created > timedelta(days=30):
+                user_delete_timer.user_extension.user.delete()
+                user_sub_username = None
+
+            if user_sub_username is not None:
+                clue = {'message': texts.USERNAME_ALREADY_USED}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            # regex check
+
+            # In username, more 5 characters and only digits prevent
+            if not match_username:
+                clue = {'message': texts.USERNAME_UNAVAILABLE}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if len(username) > 5 and username.isdigit():
+                clue = {'message': texts.USERNAME_OVER_5_CANNOT_DIGITS}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if len(username) > 30:
+                clue = {'message': texts.USERNAME_LENGTH_OVER_30}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if not match_email:
+                clue = {'message': texts.EMAIL_UNAVAILABLE}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if len(email) > 255:
+                clue = {'message': texts.EMAIL_LENGTH_OVER_255}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if not password == password_confirm:
+                clue = {'message': texts.PASSWORD_NOT_THE_SAME}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if len(password) > 128 or len(password) < 6:
+                clue = {'message': texts.PASSWORD_LENGTH_PROBLEM}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            if username == password:
+                clue = {'message': texts.PASSWORD_EQUAL_USERNAME}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            # recaptcha part begin
+
+            recaptcha_response = request.POST.get('g-recaptcha-response')
+            url = 'https://www.google.com/recaptcha/api/siteverify'
+            values = {
+                'secret': settings.GOOGLE_RECAPTCHA_SECRET_KEY,
+                'response': recaptcha_response
+            }
+            recaptcha_data = urllib.parse.urlencode(values).encode()
+            recaptcha_req = urllib.request.Request(url, data=recaptcha_data)
+            recaptcha_response = urllib.request.urlopen(recaptcha_req)
+            recaptcha_result = json.loads(recaptcha_response.read().decode())
+
+            if not recaptcha_result['success']:
+                clue = {'message': texts.RECAPTCHA_CONFIRM_NEED}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+            # Then, go to is_valid below
+            if form.is_valid():
+                check_username_result = None
+                new_user_create = None
+                new_name = form.cleaned_data['name']
+                new_username = form.cleaned_data['username']
+                new_password = form.cleaned_data['password']
+                new_email = form.cleaned_data['email']
+                while check_username_result is None:
+                    try:
+                        id_number = make_id()
+                        new_user_create = User.objects.create_user(
+                            username=id_number,
+                            password=new_password,
+                            is_active=False,
+                        )
+                        check_username_result = 1
+
                     except IntegrityError as e:
                         if 'unique constraint' in e.message:
                             pass
                         else:
-                            clue = {'message': texts.EMAIL_CONFIRMATION_EXTRA_ERROR}
-                            form = UserCreateForm(data)
-                            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
+                            clue = {'message': texts.CREATING_USER_EXTRA_ERROR}
+                            log_in_form = LoginForm()
+                            create_form = UserCreateForm(data)
+                            return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                                          'log_in_form': log_in_form,
+                                                                                          'clue': clue})
 
-            current_site = get_current_site(request)
-            subject = '[' + current_site.domain + ']' + texts.EMAIL_CONFIRMATION_SUBJECT
+                new_user_extension_create = None
 
-            message = render_to_string('renoauth/account_activation_email.html', {
-                'user': new_user_sub_username,
-                'domain': current_site.domain,
-                'uid': uid,
-                'token': token,
-            })
+                if new_user_create is not None:
+                    new_user_extension_create = UserExtension.objects.create(
+                        user=new_user_create,
+                        verified=False,
+                    )
 
-            # Here needs variable of form.cleaned_data['email']?
-            new_user_sub_email_list = [new_email]
+                new_user_sub_email_create = None
+                new_user_sub_username = None
+                new_user_sub_name = None
 
-            send_mail(
-                subject=subject, message=message, from_email=options.DEFAULT_FROM_EMAIL,
-                recipient_list=new_user_sub_email_list
-            )
+                if new_user_extension_create is not None:
 
-            login(request, new_user_create)
+                    new_user_sub_email_create = UserSubEmail.objects.create(
+                        user_extension=new_user_extension_create,
+                        email=new_email,
+                        verified=False,
+                        primary=True,
+                    )
 
-            return redirect('/')
-        else:
-            form = UserCreateForm(data)
-            clue = {'message': texts.CREATING_USER_OVERALL_ERROR}
-            return render(request, 'renoauth/create.html', {'form': form, 'clue': clue})
+                    if user_sub_email is not None and user_sub_email.verified is False:
+                        user_sub_email.delete()
+
+                    new_user_sub_username = UserSubUsername.objects.create(
+                        user_extension=new_user_extension_create,
+                        username=new_username,
+                    )
+                    new_user_sub_name = UserSubName.objects.create(
+                        user_extension=new_user_extension_create,
+                        name=new_name
+                    )
+
+                uid = None
+                token = None
+                check_token_result = None
+                if new_user_sub_email_create is not None:
+
+                    while check_token_result is None:
+                        try:
+                            uid = urlsafe_base64_encode(force_bytes(new_user_create.pk))
+                            token = account_activation_token.make_token(new_user_create)
+                            if not UserEmailAuthToken.objects.filter(uid=uid, token=token).exists():
+                                UserEmailAuthToken.objects.create(
+                                    email=new_user_sub_email_create,
+                                    uid=uid,
+                                    token=token,
+                                )
+                            check_token_result = 1
+                        except IntegrityError as e:
+                            if 'unique constraint' in e.message:
+                                pass
+                            else:
+                                clue = {'message': texts.EMAIL_CONFIRMATION_EXTRA_ERROR}
+                                log_in_form = LoginForm()
+                                create_form = UserCreateForm(data)
+                                return render(request, 'renoauth/main_create_password.html',
+                                              {'create_form': create_form,
+                                               'log_in_form': log_in_form,
+                                               'clue': clue})
+                current_site = get_current_site(request)
+                subject = '[' + current_site.domain + ']' + texts.EMAIL_CONFIRMATION_SUBJECT
+
+                message = render_to_string('renoauth/account_activation_email.html', {
+                    'username': new_user_sub_username.username,
+                    'name': new_user_sub_name.name,
+                    'email': new_user_sub_email_create.email,
+                    'domain': current_site.domain,
+                    'uid': uid,
+                    'token': token,
+                })
+
+                # Here needs variable of form.cleaned_data['email']?
+                new_user_sub_email_list = [new_email]
+
+                send_mail(
+                    subject=subject, message=message, from_email=options.DEFAULT_FROM_EMAIL,
+                    recipient_list=new_user_sub_email_list
+                )
+
+                login(request, new_user_create)
+
+                return redirect('/')
+            else:
+                clue = {'message': texts.CREATING_USER_OVERALL_ERROR}
+                log_in_form = LoginForm()
+                create_form = UserCreateForm(data)
+                return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
+                                                                              'log_in_form': log_in_form, 'clue': clue})
+
+        elif request.POST['type'] == 'log_in':
+
+            form = LoginForm(request.POST)
+            username = form.data['username']
+            data = {
+                'username': username,
+            }
+
+            user_sub_email = None
+            user_sub_username = None
+            user_delete_timer = None
+            if '@' in username:
+                try:
+                    user_sub_email = UserSubEmail.objects.get(email=username, primary=True)
+                except UserSubEmail.DoesNotExist:
+                    pass
+
+                if user_sub_email is not None:
+                    try:
+                        user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_sub_email.user_extension)
+                    except UserDeleteTimer.DoesNotExist:
+                        pass
+                    if user_delete_timer is not None:
+                        if now() - user_delete_timer.created > timedelta(days=30):
+                            user_delete_timer.user_extension.user.delete()
+                            user_sub_email = None
+                        else:
+                            pass
+
+                if user_sub_email is None:
+                    clue_log_in = {'message': texts.LOGIN_EMAIL_NOT_EXIST}
+                    log_in_form = LoginForm(data)
+                    create_form = UserCreateForm()
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue_log_in': clue_log_in})
+            else:
+                try:
+                    user_sub_username = UserSubUsername.objects.get(username=username)
+                except UserSubUsername.DoesNotExist:
+                    pass
+
+                if user_sub_username is not None:
+                    try:
+                        user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_sub_username.user_extension)
+                    except UserDeleteTimer.DoesNotExist:
+                        pass
+
+                    if user_delete_timer is not None:
+                        if now() - user_delete_timer.created > timedelta(days=30):
+                            user_delete_timer.user_extension.user.delete()
+                            user_sub_username = None
+                        else:
+                            pass
+                if user_sub_username is None:
+                    clue_log_in = {'message': texts.LOGIN_USERNAME_NOT_EXIST}
+                    log_in_form = LoginForm(data)
+                    create_form = UserCreateForm()
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue_log_in': clue_log_in})
+
+            if form.is_valid():
+                username = form.cleaned_data['username']
+                password = form.cleaned_data['password']
+                user = authenticate(username=username, password=password)
+
+                if user is not None:
+                    user_extension = user.userextension
+                    if user_extension.activated is False:
+                        user_extension.activated = True
+                        user_extension.save()
+                        if user_delete_timer is not None:
+                            user_delete_timer.delete()
+
+                    login(request, user)
+                    return redirect('success')
+                else:
+                    data = {
+                        'username': username,
+                    }
+
+                    clue_log_in = {'message': texts.LOGIN_FAILED}
+                    log_in_form = LoginForm(data)
+                    create_form = UserCreateForm()
+                    return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                                'log_in_form': log_in_form,
+                                                                                'clue_log_in': clue_log_in})
+
     else:
-        form = UserCreateForm()
-        return render(request, 'renoauth/create.html', {'form': form})
+        log_in_form = LoginForm()
+        create_form = UserCreateForm()
+        return render(request, 'renoauth/main_create_log_in.html', {'create_form': create_form,
+                                                                    'log_in_form': log_in_form})
 
 
 def email_key_confirm(request, uid, token):
@@ -450,97 +702,18 @@ def email_key_confirm(request, uid, token):
         user_sub_email.verified = True
         user_extension.verified = True
         user_extension.activated = True
+        user.is_active = True
 
         UserSubEmail.objects.filter(Q(email=email), ~Q(user_extension=user_extension)).delete()
 
         user_sub_email.save()
         user_extension.save()
+        user.save()
         clue = {'message': texts.KEY_CONFIRM_SUCCESS}
         return render(request, 'renoauth/email_key_confirm.html', {'clue': clue})
     else:
         clue = {'message': texts.KEY_OVERALL_FAILED}
         return render(request, 'renoauth/email_key_confirm.html', {'clue': clue})
-
-
-def log_in(request):
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        username = form.data['username']
-        user_sub_email = None
-        user_sub_username = None
-        user_delete_timer = None
-        if '@' in username:
-            try:
-                user_sub_email = UserSubEmail.objects.get(email=username, primary=True)
-            except UserSubEmail.DoesNotExist:
-                pass
-
-            if user_sub_email is not None:
-                try:
-                    user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_sub_email.user_extension)
-                except UserDeleteTimer.DoesNotExist:
-                    pass
-                if user_delete_timer is not None:
-                    if now() - user_delete_timer.created > timedelta(days=30):
-                        user_delete_timer.user_extension.user.delete()
-                        user_sub_email = None
-                    else:
-                        pass
-
-            if user_sub_email is None:
-                clue = {'message': texts.LOGIN_EMAIL_NOT_EXIST}
-                return render(request, 'main.html', {'form': form, 'clue': clue})
-
-        else:
-            try:
-                user_sub_username = UserSubUsername.objects.get(username=username)
-            except UserSubUsername.DoesNotExist:
-                pass
-
-            if user_sub_username is not None:
-                try:
-                    user_delete_timer = UserDeleteTimer.objects.get(user_extension=user_sub_username.user_extension)
-                except UserDeleteTimer.DoesNotExist:
-                    pass
-
-                if user_delete_timer is not None:
-                    if now() - user_delete_timer.created > timedelta(days=30):
-                        user_delete_timer.user_extension.user.delete()
-                        user_sub_username = None
-                    else:
-                        pass
-
-                if user_sub_username is None:
-                    clue = {'message': texts.LOGIN_USERNAME_NOT_EXIST}
-                    return render(request, 'main.html', {'form': form, 'clue': clue})
-
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(username=username, password=password)
-
-            if user is not None:
-                user_extension = user.userextension
-                if user_extension.activated is False:
-                    user_extension.activated = True
-                    user_extension.save()
-                    if user_delete_timer is not None:
-                        user_delete_timer.delete()
-
-
-                login(request, user)
-                return redirect('/')
-            else:
-                data = {
-                    'username': username,
-                    'password': password,
-                }
-                form = LoginForm(data)
-                clue = {'message': texts.LOGIN_FAILED}
-                return render(request, 'main.html', {'form': form, 'clue': clue})
-    else:
-        form = LoginForm()
-        return render(request, 'signin.html', {'form': form})
 
 
 def log_out(request):
