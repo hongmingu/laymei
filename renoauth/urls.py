@@ -8,7 +8,6 @@ urlpatterns = [
 
     url(r'^$', views.accounts, name='accounts'),
 
-    url(r'^create/$', views.create, name='create'),
 
     url(r'^email/key/send/$', views.email_key_send, name='email_key_send'),
     url(r'^email/key/confirm/(?P<uid>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
@@ -25,3 +24,6 @@ urlpatterns = [
 
     url(r'^email/add/$', views.email_add, name='email_add'),
 ]
+'''
+    url(r'^create/$', views.main_create_log_in, name='create'),
+'''
