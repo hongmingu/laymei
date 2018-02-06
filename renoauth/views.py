@@ -174,10 +174,10 @@ def main_create_log_in(request):
 
             form = UserCreateForm(request.POST)
 
-            password = None
             name = form.data['name']
             username = form.data['username']
             email = form.data['email']
+            password = form.data['password']
             data = {
                 'name': name,
                 'username': username,
@@ -302,7 +302,6 @@ def main_create_log_in(request):
                 return render(request, 'renoauth/main_create_password.html', {'create_form': create_form,
                                                                               'log_in_form': log_in_form})
 
-            password = form.data['password']
             password_confirm = form.data['password_confirm']
             # banned username and password
             match_ban = [nm for nm in banned.BANNED_USERNAME_LIST if nm in username]

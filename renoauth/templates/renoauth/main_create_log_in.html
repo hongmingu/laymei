@@ -47,63 +47,59 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-sm-offset-1 col-sm-10 col-md-offset-2 col-md-8">
-            <div class="row">
-                <div class="mobile_display_block">
-                    <p><h1>Laymei</h1></p>
-                </div>
+            <div class="mobile_display_block">
+                <p><h1>Laymei</h1></p>
             </div>
             <div class="row">
                 <div class="col-sm-2"></div>
                 <div class="col-sm-10">
-                    <form method="post" action=".">
-                        {% csrf_token %}
+                    <div class="row">
+                        <form method="post" action=".">
+                            {% csrf_token %}
 
-                        <div class="col-sm-5 form-group">
-                            {{ log_in_form.username }}
-                        </div>
-                        <div class="col-sm-5 form-group">
-                            {{ log_in_form.password }}
-                        </div>
-                        <div class="col-sm-2">
-                            <button type="submit" class="btn btn-default pull-right" name="type" value="log_in">Submit</button>
-                        </div>
-                    </form>
+                            <div class="col-sm-5 form-group">
+                                {{ log_in_form.username }}
+                            </div>
+                            <div class="col-sm-5 form-group">
+                                {{ log_in_form.password }}
+                            </div>
+                            <div class="col-sm-2">
+                                <button type="submit" class="btn btn-default pull-right" name="type" value="log_in">Submit</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
             <div class="row">
                 <div class="col-sm-7 mobile_display_none">
-                    <div class="row">
-                        <p><h1>Laymei</h1></p>
-                        <p>This site is for lazy messaging or laying message.</p>
-                        <p>You can talk with your friends and lay your message to your friends or other your followers</p>
-                    </div>
+                    <p><h1>Laymei</h1></p>
+                    <p>This site is for lazy messaging or laying message.</p>
+                    <p>You can talk with your friends and lay your message to your friends or other your followers</p>
                 </div>
                 <div class="col-sm-5">
-                    <div class="row">
-                        <p class="h3">Register</p>
-                        <form method="post" action=".">
-                            {% csrf_token %}
-                            <div class="form-group">
-                                {{ create_form.name }}
-                            </div>
-                            <div class="form-group">
-                                {{ create_form.username }}
-                            </div>
-                            <div class="form-group">
-                                {{ create_form.email }}
-                            </div>
-                            <div class="row">
-                                <div class="col-xs-9">
-                                    {% if not clue %}
+                    <p class="h3">Register</p>
+                    <form method="post" action=".">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            {{ create_form.name }}
+                        </div>
+                        <div class="form-group">
+                            {{ create_form.username }}
+                        </div>
+                        <div class="form-group">
+                            {{ create_form.email }}
+                        </div>
+                        <div class="row">
+                            <div class="col-xs-9">
+                                {% if clue %}
                                     <p class="text-primary" style="word-wrap: break-word">{{ clue.message }}</p>
-                                    {% endif %}
-                                </div>
-                                <div class="col-xs-3">
-                                    <button type="submit" class="btn btn-default pull-right" name="type" value="create">Submit</button>
-                                </div>
+                                {% endif %}
                             </div>
-                        </form>
-                    </div>
+                            <div class="col-xs-3">
+                                <button type="submit" class="btn btn-default pull-right" name="type" value="create">Submit</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
