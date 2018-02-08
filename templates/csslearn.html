@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Demo-smallmsg</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <!-- 부트스트랩 3.3.7로 버전바꾸니 드랍다운에서 인풋클릭시 사라지는거 해결-->
+    <script
+    src="https://code.jquery.com/ui/1.9.2/jquery-ui.min.js"
+    integrity="sha256-eEa1kEtgK9ZL6h60VXwDsJ2rxYCwfxi40VZ9E0XwoEA="
+    crossorigin="anonymous"></script>
+</head>
+<style>
+
+.thumb-wrapper { width: 100%; }
+.thumb { position: relative; padding-top: 100%; /* 1:1 ratio */ overflow: hidden; }
+.thumb .centered { position: absolute; top: 0; left: 0; right: 0; bottom: 0; -webkit-transform: translate(50%,50%); -ms-transform: translate(50%,50%); transform: translate(50%,50%); }
+.thumb .centered img { position: absolute; top: 0; left: 0; max-width: 100%; height: auto; -webkit-transform: translate(-50%,-50%); -ms-transform: translate(-50%,-50%); transform: translate(-50%,-50%); }
+img.portrait { width: auto; max-height: 100%; }
+
+
+    .wrap {
+      width: 500px;
+    }
+    .wrap textarea {
+      width: 100%;
+      resize: none;
+      overflow-y: hidden; /* prevents scroll bar flash */
+      padding: 1.1em; /* prevents text jump on Enter keypress */
+      padding-bottom: 0.2em;
+      line-height: 1.6;
+    }
+</style>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-xs-4">
+
+            <div class="thumb-wrapper">
+                <div class="thumb" style="border: solid">
+                    <div class="centered">
+                        <img src="">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-4">
+
+            <div class="thumb-wrapper">
+                <div class="thumb" style="border: solid">
+                    <div class="centered">
+                        <img src="">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xs-4">
+
+            <div class="thumb-wrapper">
+                <div class="thumb" style="border: solid">
+                    <div class="centered">
+                        <img  class="portrait" src="">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-4">
+
+            <div class="thumb-wrapper">
+                <div class="thumb" style="border: solid">
+                </div>
+            </div>
+        </div>
+        <div class="col-xs-4">
+            <div style="position: relative; display: inline-block; border-radius: 5px; overflow: hidden; width: 40px; height: 40px; vertical-align:top; margin-top: 20px; margin-bottom: 10px;">
+                <div style="width: 40px; position: absolute;">
+                    <div style="padding-top: 100%; /* 1:1 ratio */ overflow: hidden; background-color: #b3356d;
+
+                        -webkit-transform: translate(0%,0%) scale(1);
+                        -ms-transform: translate(0%,0%) scale(1);
+                        transform: translate(0%,0%) scale(1);">
+                    </div>
+                </div>
+                <div style="width: 40px; position: absolute;">
+                    <div style="
+                    display: inline-block;
+                    width: 0;
+                    height: 0;
+                    border-style: solid;
+                    border-width: 40px 0 0 30px;
+                    border-color: transparent transparent transparent #74fe2e;">
+                    </div>
+                </div>
+                <div style="width: 40px; position: absolute;">
+                    <div style="
+                    margin-top: 10px;
+                    display: inline-block;
+                    width: 0;
+                    height: 0;
+                    border-style: solid;
+                    border-width: 0 0 30px 40px;
+                    border-color: transparent transparent #74fe2e transparent;
+                    ">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<div class="conatiner">
+    <div class="row" style="">
+        <div id="col_autoheight" class="col-sm-12 col-md-12 col-lg-12" style="margin-top: 10px; height: 100px; padding-top: 100px; background-color: yellow">
+
+            <form role="form">
+                <div class="input-group input-group-sm" style="">
+                    <textarea class="form-control" id="usrname" placeholder="Enter email" style="resize: none; width: 100%; position: absolute; bottom: 0;"></textarea>
+                    <div class="" style="">
+                        <button type="button" class="btn btn-default" id="textbtninput" style="float: right"><i class="glyphicon glyphicon-search"></i></button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+</body>
+
+
+  <script>
+    $(document).ready(function() {
+      $('#textareaautoheight').on( 'keydown', 'textarea', function (e){
+        $(this).css('height', 'auto' );
+        $(this).height( this.scrollHeight );
+      });
+      $('#textareaautoheight').find( 'textarea' ).keydown();
+
+    });
+  </script>
+</html>
